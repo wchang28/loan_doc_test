@@ -1,0 +1,19 @@
+{
+  "name": "loan_doc_test",
+  "version": "1.0.0",
+  "description": "Loan Doc Test",
+  "main": "./js/app.js",
+  "scripts": {
+    "test": "node ./js/app.js"
+  },
+  "author": "Wen Chang",
+  "license": "MIT",
+  "dependencies": {
+    "@types/lodash": "^4.14.70",
+    "@types/mssql": "^4.0.4",
+    "@types/node": "^7.0.16",
+    "lodash": "^4.17.4",
+    "msnodesqlv8": "^0.3.1",
+    "mssql": "^4.0.4"
+  }
+}
