@@ -175,8 +175,8 @@ function processPage(page: number, doc: Document) : PageExtraction {
     return {pi, lines: pageLines, words: pageWords};
 }
 
-function aggregatePageInfos(pageInfos: PageExtraction[]) : DocumentExtraction {
-    let documentInfo: DocumentExtraction = {
+function aggregatePageExtractions(pageExtractions: PageExtraction[]) : DocumentExtraction {
+    let documentExtraction: DocumentExtraction = {
         doc: null
         ,pages: []
         ,lines: []
@@ -184,24 +184,24 @@ function aggregatePageInfos(pageInfos: PageExtraction[]) : DocumentExtraction {
     }
     let topOffset = 0;
     let lineOffset = 0;
-    for (let i in pageInfos) {	// for each page
+    for (let i in pageExtractions) {	// for each page
         //console.log([topOffset, lineOffset]);
         let page = parseInt(i) + 1;
-        let pageInfo = pageInfos[i];
-        let pi = pageInfo.pi;
+        let pageExtraction = pageExtractions[i];
+        let pi = pageExtraction.pi;
         let shiftedPage: AbsolutePageInfo = _.assignIn({}, pi, {at: pi.t + topOffset, ab: pi.b + topOffset});
-        documentInfo.pages.push(shiftedPage);
-        let shiftedWords: AbsoluteWordInfo[] = alasql('SELECT pg, ln, idx, v, l, r, t, b, ln+' + lineOffset + ' as aln, if(t, t+' + topOffset + ', null) as at, if(b, b+' + topOffset + ', null) as ab from ? ', [pageInfo.words]);
-        documentInfo.words = documentInfo.words.concat(shiftedWords);
-        let shiftedLines: AbsoluteLineInfo[] = alasql('SELECT pg, ln, v, wds, l, r, t, b, ln+' + lineOffset + ' as aln, if(t, t+' + topOffset + ', null) as at, if(b, b+' + topOffset + ', null) as ab, nb from ? ', [pageInfo.lines]);
-        documentInfo.lines = documentInfo.lines.concat(shiftedLines);
+        documentExtraction.pages.push(shiftedPage);
+        let shiftedWords: AbsoluteWordInfo[] = alasql('SELECT pg, ln, idx, v, l, r, t, b, ln+' + lineOffset + ' as aln, if(t, t+' + topOffset + ', null) as at, if(b, b+' + topOffset + ', null) as ab from ? ', [pageExtraction.words]);
+        documentExtraction.words = documentExtraction.words.concat(shiftedWords);
+        let shiftedLines: AbsoluteLineInfo[] = alasql('SELECT pg, ln, v, wds, l, r, t, b, ln+' + lineOffset + ' as aln, if(t, t+' + topOffset + ', null) as at, if(b, b+' + topOffset + ', null) as ab, nb from ? ', [pageExtraction.lines]);
+        documentExtraction.lines = documentExtraction.lines.concat(shiftedLines);
         //console.log('page ' + page + ': ' + JSON.stringify(newLines));
-        topOffset += (pageInfo.pi.b + 100);
-        lineOffset += pageInfo.lines.length;
+        topOffset += (pageExtraction.pi.b + 100);
+        lineOffset += pageExtraction.lines.length;
     }
-    let ret = alasql('select sum(lns) as lns, sum(wds) as wds, min(l) as l, max(r) as r, min(at) as at, max(ab) as ab from ?',[documentInfo.pages]);
-    documentInfo.doc = _.assignIn({pgs: documentInfo.pages.length}, ret[0]);
-    return documentInfo;
+    let ret = alasql('select sum(lns) as lns, sum(wds) as wds, min(l) as l, max(r) as r, min(at) as at, max(ab) as ab from ?', [documentExtraction.pages]);
+    documentExtraction.doc = _.assignIn({pgs: documentExtraction.pages.length}, ret[0]);
+    return documentExtraction;
 }
 
 function getPageXMLDocFromS3(Bucket: string, Key: string) : Promise<Document> {
@@ -218,12 +218,8 @@ function getPageXMLDocFromS3(Bucket: string, Key: string) : Promise<Document> {
 
 let getPageExtractionFromS3 = (Bucket: string, Key: string, page: number) : Promise<PageExtraction> => (getPageXMLDocFromS3(Bucket, Key).then((doc: Document) => processPage(page, doc)));
 
-function pad_4_zeros(page: number) : string {
-    let p = (page < 10 ? "000" : (page < 100 ? "00" : (page < 1000 ? "0" : "")));
-    return p + page.toString();
-}
-
-let getPageXMLS3Key = (JobId: string, LoanId: string, page: number) : string => (JobId + "/" + LoanId + "/TXT/page_" + pad_4_zeros(page) + ".xml");
+let pad_4 = (page: number) : string => ((page < 10 ? "000" : (page < 100 ? "00" : (page < 1000 ? "0" : ""))) + page.toString());
+let getPageXMLS3Key = (JobId: string, LoanId: string, page: number) : string => (JobId + "/" + LoanId + "/TXT/page_" + pad_4(page) + ".xml");
 
 let Bucket = "harvest-split";
 let JobId = "162de65ed655c5a7328b535c7a716994";
@@ -248,7 +244,7 @@ for (let i = 0; i < pages; i++) {
 let p = Promise.all(promises);
 p.then((value: PageExtraction[]) => {
     //console.log(value.length);
-    return aggregatePageInfos(value);
+    return aggregatePageExtractions(value);
 }).then((value: DocumentExtraction) => {
     //console.log(JSON.stringify(value, null, 2));
     //console.log("pgs=" + value.pages.length);
