@@ -140,26 +140,53 @@ function processPage(page: number, doc: Document) : PageExtraction {
     return {pi, lines: pageLines, words: pageWords};
 }
 
-function GetS3XMLDoc(Bucket: string, Key: string) : Promise<Document> {
+function getS3XMLDoc(Bucket: string, Key: string) : Promise<Document> {
     let s3 = new AWS.S3();
     return s3.getObject({Bucket, Key}).promise()
     .then((output: AWS.S3.GetObjectOutput) => {
-        //console.log(output.Body);
         let buff = <Buffer>output.Body;
         let s = buff.toString("utf16le");   // xml file is encoded with UCS-2 LE BOM (UTF-16 LE) acording to Notepad++
         s = s.substr(1, s.length-1);    // Get rid of BOM in the file
-        //console.log(s);
         let doc = new DOMParser().parseFromString(s);
         return doc;
     });   
 }
 
-GetS3XMLDoc("harvest-split", "162de65ed655c5a7328b535c7a716994/fdd1f16370c53f777a83df5320b6a899/TXT/page_0001.xml")
-.then((doc: Document) => {
-    //let s = new XMLSerializer().serializeToString(doc);
-    //console.log(s);
-    let pe = processPage(1, doc);
+function getPageExtractionFromS3(Bucket: string, Key: string, page: number) : Promise<PageExtraction> {
+    return getS3XMLDoc(Bucket, Key).then((doc: Document) => processPage(page, doc));
+}
+
+function pad_4_zeros(page: number) : string {
+    if (page < 10)
+        return "000" + page.toString();
+    else if (page < 100)
+        return "00" + page.toString();
+    else if (page < 1000)
+        return "0" + page.toString();
+    else
+        return page.toString();
+}
+
+let Bucket = "harvest-split";
+/*
+getPageExtractionFromS3(Bucket, "162de65ed655c5a7328b535c7a716994/fdd1f16370c53f777a83df5320b6a899/TXT/page_0001.xml", 1)
+.then((pe: PageExtraction) => {
     console.log(JSON.stringify(pe, null, 2));
 }).catch((err: any) => {
     console.log("!!! Error: " + JSON.stringify(err));
 })
+*/
+
+let pages = 21;
+let promises: Promise<PageExtraction>[] = [];
+for (let i = 0; i < pages; i++) {
+    let page = i + 1;
+    let Key = "162de65ed655c5a7328b535c7a716994/fdd1f16370c53f777a83df5320b6a899/TXT" + "/" + "page_" + pad_4_zeros(page) + ".xml";
+    promises.push(getPageExtractionFromS3(Bucket, Key, page));
+}
+let p = Promise.all(promises);
+p.then((value: PageExtraction[]) => {
+    console.log(value.length);
+}).catch((err: any) => {
+    console.log("!!! Error: " + JSON.stringify(err));
+});
