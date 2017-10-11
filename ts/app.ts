@@ -231,12 +231,16 @@ function pad_4_zeros(page: number) : string {
         return page.toString();
 }
 
+function getPageXMLS3Key(JobId: string, LoanId: string, page: number) : string {
+    return JobId + "/" + LoanId + "/TXT" + "/" + "page_" + pad_4_zeros(page) + ".xml"
+}
+
 let Bucket = "harvest-split";
 let JobId = "162de65ed655c5a7328b535c7a716994";
 let LoanId = "fdd1f16370c53f777a83df5320b6a899";
 
 /*
-getPageExtractionFromS3(Bucket, JobId + "/" + LoanId + "/TXT" + "/" + "page_" + pad_4_zeros(1) + ".xml", 1)
+getPageExtractionFromS3(Bucket, getPageXMLS3Key(JobId, LoanId, 1))
 .then((pe: PageExtraction) => {
     console.log(JSON.stringify(pe, null, 2));
 }).catch((err: any) => {
@@ -249,7 +253,7 @@ let pages = 21;
 let promises: Promise<PageExtraction>[] = [];
 for (let i = 0; i < pages; i++) {
     let page = i + 1;
-    let Key = JobId + "/" + LoanId + "/TXT" + "/" + "page_" + pad_4_zeros(page) + ".xml";
+    let Key = getPageXMLS3Key(JobId, LoanId, page);
     promises.push(getPageExtractionFromS3(Bucket, Key, page));
 }
 let p = Promise.all(promises);
