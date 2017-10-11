@@ -137,7 +137,7 @@ function processPage(page: number, doc: Document) : PageExtraction {
     let ret = alasql('SELECT min(l) as l, max(r) as r, min(t) as t, max(b) as b from ? where nb=false',[pageLines]);
     let pi: PageInfo = _.assignIn({pg: page, lns: pageLines.length}, ret[0]);
     //console.log('page ' + page + ': ' + JSON.stringify(pi));
-    return {lines: pageLines, words: pageWords, pi: pi};
+    return {pi, lines: pageLines, words: pageWords};
 }
 
 function GetS3XMLDoc(Bucket: string, Key: string) : Promise<Document> {
