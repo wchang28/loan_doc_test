@@ -10,26 +10,26 @@ let alasql = require('alasql');
 
 AWS.config.credentials = new AWS.SharedIniFileCredentials({profile: "default"});
 
-interface Bound {
+export interface Bound {
     t?: number;  // top
     b?: number;  // bottom
     l?: number;  // left
     r?: number;  // right
 }
 
-interface LineNodeInfo {
+export interface LineNodeInfo {
     node: Element;
     bound: Bound;
 }
 
-interface WordInfo extends Bound {
+export interface WordInfo extends Bound {
     pg?: number; // page number
     ln?: number; // line number
     v?: string;  // value
     idx?: number;   // word index in the line
 }
 
-interface LineInfo extends Bound {
+export interface LineInfo extends Bound {
     pg?: number; // page number
     nb?: boolean
     ln?: number; // line number
@@ -37,15 +37,48 @@ interface LineInfo extends Bound {
     wds?: number;    // number of words
 }
 
-interface PageInfo extends Bound {
+export interface PageInfo extends Bound {
     pg?: number; // page number
     lns?: number; // number of line in the page
 }
 
-interface PageExtraction {
-    pi: PageInfo
-    lines: LineInfo[]
-    words: WordInfo[];
+export interface PageExtraction {
+    pi?: PageInfo
+    lines?: LineInfo[]
+    words?: WordInfo[];
+}
+
+export interface AbsoluteWordInfo extends WordInfo {
+    aln?: number;   // absolute line number accross pages
+    at?: number; // absolute top accross pages
+    ab?: number; // absolute bottom accross pages
+}
+
+export interface AbsoluteLineInfo extends LineInfo {
+    aln?: number;   // absolute line number accross pages
+    at?: number; // absolute top accross pages
+    ab?: number; // absolute bottom accross pages
+}
+
+export interface AbsolutePageInfo extends PageInfo {
+    at?: number; // absolute top accross pages
+    ab?: number; // absolute bottom accross pages
+}
+
+export interface DocumentInfo {
+    pgs?: number;    // total number of pages
+    lns?: number;    // total number of lines
+    l?: number;  // left
+    r?: number; // right
+    at?: number; // absolute top accross pages
+    ab?: number; // absolute bottom accross pages
+}
+
+export interface DocumentExtraction {
+    doc?: DocumentInfo;
+    pages?: AbsolutePageInfo[];
+    lines?: AbsoluteLineInfo[];
+    words?: AbsoluteWordInfo[];
 }
 
 function getBoundFromNode(node: Element) : Bound {
@@ -140,6 +173,34 @@ function processPage(page: number, doc: Document) : PageExtraction {
     return {pi, lines: pageLines, words: pageWords};
 }
 
+function aggregatePageInfos(pageInfos: PageExtraction[]) : DocumentExtraction {
+    let documentInfo: DocumentExtraction = {
+        pages: []
+        ,lines: []
+        ,words: []
+    }
+    let topOffset = 0;
+    let lineOffset = 0;
+    for (let i in pageInfos) {	// for each page
+        //console.log([topOffset, lineOffset]);
+        let page = parseInt(i) + 1;
+        let pageInfo = pageInfos[i];
+        let pi = pageInfo.pi;
+        let shiftedPage: AbsolutePageInfo = _.assignIn({}, pi, {at: pi.t + topOffset, ab: pi.b + topOffset});
+        documentInfo.pages.push(shiftedPage);
+        let shiftedWords: AbsoluteWordInfo[] = alasql('SELECT pg, ln, idx, v, l, r, t, b, ln+' + lineOffset + ' as aln, if(t, t+' + topOffset + ', null) as at, if(b, b+' + topOffset + ', null) as ab from ? ', [pageInfo.words]);
+        documentInfo.words = documentInfo.words.concat(shiftedWords);
+        let shiftedLines: AbsoluteLineInfo[] = alasql('SELECT pg, ln, v, wds, l, r, t, b, ln+' + lineOffset + ' as aln, if(t, t+' + topOffset + ', null) as at, if(b, b+' + topOffset + ', null) as ab, nb from ? ', [pageInfo.lines]);
+        documentInfo.lines = documentInfo.lines.concat(shiftedLines);
+        //console.log('page ' + page + ': ' + JSON.stringify(newLines));
+        topOffset += (pageInfo.pi.b + 100);
+        lineOffset += pageInfo.lines.length;
+    }
+    let ret = alasql('select sum(lns) as lns, min(l) as l, max(r) as r, min(at) as at, max(ab) as ab from ?',[documentInfo.pages]);
+    documentInfo.doc = _.assignIn({pgs: documentInfo.pages.length}, ret[0]);
+    return documentInfo;
+}
+
 function getS3XMLDoc(Bucket: string, Key: string) : Promise<Document> {
     let s3 = new AWS.S3();
     return s3.getObject({Bucket, Key}).promise()
@@ -187,7 +248,10 @@ for (let i = 0; i < pages; i++) {
 }
 let p = Promise.all(promises);
 p.then((value: PageExtraction[]) => {
-    console.log(value.length);
+    //console.log(value.length);
+    return aggregatePageInfos(value);
+}).then((value: DocumentExtraction) => {
+    console.log(JSON.stringify(value, null, 2));
 }).catch((err: any) => {
     console.log("!!! Error: " + JSON.stringify(err));
 });
