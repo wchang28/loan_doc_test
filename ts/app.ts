@@ -204,7 +204,7 @@ function aggregatePageInfos(pageInfos: PageExtraction[]) : DocumentExtraction {
     return documentInfo;
 }
 
-function getS3XMLDoc(Bucket: string, Key: string) : Promise<Document> {
+function getPageXMLDocFromS3(Bucket: string, Key: string) : Promise<Document> {
     let s3 = new AWS.S3();
     return s3.getObject({Bucket, Key}).promise()
     .then((output: AWS.S3.GetObjectOutput) => {
@@ -216,17 +216,11 @@ function getS3XMLDoc(Bucket: string, Key: string) : Promise<Document> {
     });   
 }
 
-let getPageExtractionFromS3 = (Bucket: string, Key: string, page: number) : Promise<PageExtraction> => (getS3XMLDoc(Bucket, Key).then((doc: Document) => processPage(page, doc)));
+let getPageExtractionFromS3 = (Bucket: string, Key: string, page: number) : Promise<PageExtraction> => (getPageXMLDocFromS3(Bucket, Key).then((doc: Document) => processPage(page, doc)));
 
 function pad_4_zeros(page: number) : string {
-    if (page < 10)
-        return "000" + page.toString();
-    else if (page < 100)
-        return "00" + page.toString();
-    else if (page < 1000)
-        return "0" + page.toString();
-    else
-        return page.toString();
+    let p = (page < 10 ? "000" : (page < 100 ? "00" : (page < 1000 ? "0" : "")));
+    return p + page.toString();
 }
 
 let getPageXMLS3Key = (JobId: string, LoanId: string, page: number) : string => (JobId + "/" + LoanId + "/TXT/page_" + pad_4_zeros(page) + ".xml");
