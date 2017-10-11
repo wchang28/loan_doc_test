@@ -257,10 +257,12 @@ p.then((value: PageExtraction[]) => {
     //console.log(value.length);
     return aggregatePageInfos(value);
 }).then((value: DocumentExtraction) => {
-    console.log(JSON.stringify(value, null, 2));
+    //console.log(JSON.stringify(value, null, 2));
     //console.log("pgs=" + value.pages.length);
     //console.log("lns=" + value.lines.length);
     //console.log("wds=" + value.words.length);
+    let ret = alasql('select count(*) as cnt from ? where v=?',[value.words, 'UDOH']);
+    console.log("count=" + ret[0].cnt);
 }).catch((err: any) => {
     console.log("!!! Error: " + JSON.stringify(err));
 });
