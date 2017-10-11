@@ -178,6 +178,7 @@ getPageExtractionFromS3(Bucket, "162de65ed655c5a7328b535c7a716994/fdd1f16370c53f
 */
 
 let pages = 21;
+
 let promises: Promise<PageExtraction>[] = [];
 for (let i = 0; i < pages; i++) {
     let page = i + 1;
