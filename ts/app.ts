@@ -216,9 +216,7 @@ function getS3XMLDoc(Bucket: string, Key: string) : Promise<Document> {
     });   
 }
 
-function getPageExtractionFromS3(Bucket: string, Key: string, page: number) : Promise<PageExtraction> {
-    return getS3XMLDoc(Bucket, Key).then((doc: Document) => processPage(page, doc));
-}
+let getPageExtractionFromS3 = (Bucket: string, Key: string, page: number) : Promise<PageExtraction> => (getS3XMLDoc(Bucket, Key).then((doc: Document) => processPage(page, doc)));
 
 function pad_4_zeros(page: number) : string {
     if (page < 10)
@@ -231,9 +229,7 @@ function pad_4_zeros(page: number) : string {
         return page.toString();
 }
 
-function getPageXMLS3Key(JobId: string, LoanId: string, page: number) : string {
-    return JobId + "/" + LoanId + "/TXT" + "/" + "page_" + pad_4_zeros(page) + ".xml"
-}
+let getPageXMLS3Key = (JobId: string, LoanId: string, page: number) : string => (JobId + "/" + LoanId + "/TXT/page_" + pad_4_zeros(page) + ".xml");
 
 let Bucket = "harvest-split";
 let JobId = "162de65ed655c5a7328b535c7a716994";
