@@ -238,6 +238,7 @@ function getPageXMLS3Key(JobId: string, LoanId: string, page: number) : string {
 let Bucket = "harvest-split";
 let JobId = "162de65ed655c5a7328b535c7a716994";
 let LoanId = "fdd1f16370c53f777a83df5320b6a899";
+let pages = 21;
 
 /*
 getPageExtractionFromS3(Bucket, getPageXMLS3Key(JobId, LoanId, 1))
@@ -247,8 +248,6 @@ getPageExtractionFromS3(Bucket, getPageXMLS3Key(JobId, LoanId, 1))
     console.log("!!! Error: " + JSON.stringify(err));
 })
 */
-
-let pages = 21;
 
 let promises: Promise<PageExtraction>[] = [];
 for (let i = 0; i < pages; i++) {
