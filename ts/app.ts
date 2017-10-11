@@ -17,7 +17,7 @@ export interface Bound {
     r?: number;  // right
 }
 
-export interface LineNodeInfo {
+interface LineNodeInfo {
     node: Element;
     bound: Bound;
 }
@@ -40,6 +40,7 @@ export interface LineInfo extends Bound {
 export interface PageInfo extends Bound {
     pg?: number; // page number
     lns?: number; // number of line in the page
+    wds?: number;   // number of words in the page
 }
 
 export interface PageExtraction {
@@ -68,6 +69,7 @@ export interface AbsolutePageInfo extends PageInfo {
 export interface DocumentInfo {
     pgs?: number;    // total number of pages
     lns?: number;    // total number of lines
+    wds?: number;   // total number of words
     l?: number;  // left
     r?: number; // right
     at?: number; // absolute top accross pages
@@ -168,7 +170,7 @@ function processPage(page: number, doc: Document) : PageExtraction {
     
     //console.log(JSON.stringify(pageLines));
     let ret = alasql('SELECT min(l) as l, max(r) as r, min(t) as t, max(b) as b from ? where nb=false',[pageLines]);
-    let pi: PageInfo = _.assignIn({pg: page, lns: pageLines.length}, ret[0]);
+    let pi: PageInfo = _.assignIn({pg: page, lns: pageLines.length, wds: pageWords.length}, ret[0]);
     //console.log('page ' + page + ': ' + JSON.stringify(pi));
     return {pi, lines: pageLines, words: pageWords};
 }
@@ -197,7 +199,7 @@ function aggregatePageInfos(pageInfos: PageExtraction[]) : DocumentExtraction {
         topOffset += (pageInfo.pi.b + 100);
         lineOffset += pageInfo.lines.length;
     }
-    let ret = alasql('select sum(lns) as lns, min(l) as l, max(r) as r, min(at) as at, max(ab) as ab from ?',[documentInfo.pages]);
+    let ret = alasql('select sum(lns) as lns, sum(wds) as wds, min(l) as l, max(r) as r, min(at) as at, max(ab) as ab from ?',[documentInfo.pages]);
     documentInfo.doc = _.assignIn({pgs: documentInfo.pages.length}, ret[0]);
     return documentInfo;
 }
@@ -253,6 +255,9 @@ p.then((value: PageExtraction[]) => {
     return aggregatePageInfos(value);
 }).then((value: DocumentExtraction) => {
     console.log(JSON.stringify(value, null, 2));
+    //console.log("pgs=" + value.pages.length);
+    //console.log("lns=" + value.lines.length);
+    //console.log("wds=" + value.words.length);
 }).catch((err: any) => {
     console.log("!!! Error: " + JSON.stringify(err));
 });
