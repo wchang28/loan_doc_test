@@ -175,7 +175,8 @@ function processPage(page: number, doc: Document) : PageExtraction {
 
 function aggregatePageInfos(pageInfos: PageExtraction[]) : DocumentExtraction {
     let documentInfo: DocumentExtraction = {
-        pages: []
+        doc: null
+        ,pages: []
         ,lines: []
         ,words: []
     }
